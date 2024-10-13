@@ -60,24 +60,22 @@ for c in [0.1, 0.2, 0.3, 0.4, 0.5]:
     
 # ex3
 data, _, labels, _ = pyod.utils.data.generate_data(n_train=1000, n_test=0, n_features=1, contamination=0.1)
-def zScoreClassifier(data, d, mean=None, cov_matrix=None):
+def zScoreClassifier(data, d, mean=None, iv=None):
     import numpy as np
-    from scipy import stats
-    from scipy.spatial.distance import mahalanobis
     
     if d == 1:
-        zscores = stats.zscore(data).flatten()
+        zscores = np.abs(data - np.mean(data)) / np.std(data)
+        zscores = zscores.flatten()
     else:
         zscores = []
-        iv = np.linalg.inv(cov_matrix)
         for point in data:
-            zscores.append(mahalanobis(point, mean, iv))
+            zscores.append(np.sqrt((point - mean).T @ iv @ (point - mean)))
         zscores = np.array(zscores)    
     
-    threshold = np.quantile(zscores, 0.1)
+    threshold = np.quantile(zscores, 1 - 0.1)
     preds = np.zeros(data.shape[0])
-    preds[zscores <= threshold] = 1
-    preds[zscores > threshold] = 0 
+    preds[zscores <= threshold] = 0
+    preds[zscores > threshold] = 1 
     
     return preds 
 
@@ -103,13 +101,54 @@ n_normal = n_samples - n_outliers
 
 normal_data = np.random.multivariate_normal(mean, cov_matrix, n_normal)
 
-outlier_range = 3
-outliers = np.random.uniform(low=-outlier_range, high=outlier_range, size=(n_outliers, 2))
+outlier_range = 5
+outliers = np.random.multivariate_normal(mean, cov_matrix, n_outliers) + np.random.uniform(low=-outlier_range, high=outlier_range, size=(n_outliers, 2))
 
 data = np.vstack([normal_data, outliers])
 labels = np.hstack([np.zeros(n_normal), np.ones(n_outliers)])
 
-preds = zScoreClassifier(data, d=2, mean=mean, cov_matrix=cov_matrix)
+def cholesky(A):
+    n = len(A)
+
+    L = [[0.0] * n for _ in range(0, n, 1)]
+
+    for i in range(0, n, 1):
+        for j in range(0, i + 1, 1):
+            tmp_sum = 0
+            for k in range(0, j, 1):
+                tmp_sum += L[i][k] * L[j][k]
+            if i == j:  
+                L[i][j] = (A[i][i] - tmp_sum) ** (1 / 2)
+            else:
+                L[i][j] = (1.0 / L[j][j] * (A[i][j] - tmp_sum))
+    return np.array(L)
+
+def substitution(R, S):
+    n = len(R)
+    X = [[0.0] * n for i in range(0, n, 1)]
+
+    for i in range(n - 1, -1, -1):
+        for j in range(i, -1, -1):
+            tmp_sum = 0
+            for k in range(j + 1, n, 1):
+                tmp_sum += R[j][k] * X[k][i]
+            X[j][i] = (S[j][i] - tmp_sum) / R[j][j]
+            X[i][j] = X[j][i]
+    return X
+
+def inv(A):
+    L = cholesky(A)
+
+    R = L.T
+
+    S = np.diag(1 / R.diagonal())
+
+    X = substitution(R, S)
+    
+    return X
+
+iv = inv(cov_matrix)
+preds = zScoreClassifier(data, d=2, mean=mean, iv=iv)
 ba = getBalancedAcc(labels, preds)
 print("2D Balanced Acc=", ba)
 
