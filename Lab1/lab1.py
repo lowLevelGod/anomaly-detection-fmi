@@ -86,26 +86,19 @@ print("1D Balanced Acc=", ba)
 # ex4
 import numpy as np
 
-np.random.seed(10)
-
-mean = [0, 1]  
-cov_matrix = np.array([
-    [1, 0.3], 
-    [0.3, 2]
-])
-
-n_samples = 1000  
-contamination = 0.10  
-n_outliers = int(n_samples * contamination)
-n_normal = n_samples - n_outliers
-
-normal_data = np.random.multivariate_normal(mean, cov_matrix, n_normal)
-
-outlier_range = 5
-outliers = np.random.multivariate_normal(mean, cov_matrix, n_outliers) + np.random.uniform(low=-outlier_range, high=outlier_range, size=(n_outliers, 2))
-
-data = np.vstack([normal_data, outliers])
-labels = np.hstack([np.zeros(n_normal), np.ones(n_outliers)])
+def standard_normal_samples(n, k):
+    z = np.zeros((n, k))
+    for i in range(n):
+        for j in range(0, k, 2):
+            u1 = np.random.uniform(0, 1)
+            u2 = np.random.uniform(0, 1)
+            
+            r = np.sqrt(-2 * np.log(u1))
+            theta = 2 * np.pi * u2
+            z[i, j] = r * np.cos(theta)
+            if j + 1 < k:
+                z[i, j + 1] = r * np.sin(theta)
+    return z
 
 def cholesky(A):
     n = len(A)
@@ -122,6 +115,34 @@ def cholesky(A):
             else:
                 L[i][j] = (1.0 / L[j][j] * (A[i][j] - tmp_sum))
     return np.array(L)
+
+def multivariate_normal_samples(mean, cov_matrix, n_samples):
+    k = len(mean) 
+    z = standard_normal_samples(n_samples, k)
+    L = cholesky(cov_matrix)
+    samples = mean + np.dot(z, L.T)
+    
+    return samples
+np.random.seed(10)
+
+mean = [0, 1]  
+cov_matrix = np.array([
+    [1, 0.3], 
+    [0.3, 2]
+])
+
+n_samples = 1000  
+contamination = 0.10  
+n_outliers = int(n_samples * contamination)
+n_normal = n_samples - n_outliers
+
+normal_data = multivariate_normal_samples(mean, cov_matrix, n_normal)
+
+outlier_range = 5
+outliers = multivariate_normal_samples(mean, cov_matrix, n_outliers) + np.random.uniform(low=-outlier_range, high=outlier_range, size=(n_outliers, 2))
+
+data = np.vstack([normal_data, outliers])
+labels = np.hstack([np.zeros(n_normal), np.ones(n_outliers)])
 
 def substitution(R, S):
     n = len(R)
