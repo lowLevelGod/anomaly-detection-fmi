@@ -20,13 +20,9 @@ def getDataset(meanPoints, meanNoise, stdPoints, stdNoise, N, d):
 
 
 def compute_leverage(X):
-    U, S, Vt = np.linalg.svd(X, full_matrices=False)
+    U, _, _ = np.linalg.svd(X, full_matrices=False)
     
-    S_inv = np.diag(1 / S)
-    
-    X_pseudo_inv = Vt.T @ S_inv @ U.T
-    
-    H = X @ X_pseudo_inv
+    H = U @ U.T
     
     leverage = np.diag(H)
     
