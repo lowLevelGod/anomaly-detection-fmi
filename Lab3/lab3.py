@@ -3,22 +3,22 @@ from sklearn.datasets import make_blobs
 # ex1
 # 1.1
 def ex1():
-    data, _ = make_blobs(n_samples=500, n_features=2, random_state=42, centers=1)
+    data, _ = make_blobs(n_samples=500, n_features=2, random_state=42, centers=[(0, 0)])
     # 1.2
     import numpy as np
     import matplotlib.pyplot as plt
     from sklearn.preprocessing import normalize
 
     np.random.seed(42)
-    proj_vectors = np.random.multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=5)
+    proj_vectors = np.random.multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=20)
     proj_vectors = normalize(proj_vectors)
     proj_data = data @ proj_vectors.T
 
     left = proj_data.min(axis=0)
     right = proj_data.max(axis=0)
 
-    left -= 0.8 * (right - left)
-    right += 0.8 * (right - left)
+    left -= 2 * (right - left)
+    right += 2 * (right - left)
 
     def train(n_bins):
         bin_edges = []
@@ -64,9 +64,15 @@ def ex1():
         scores = np.array(scores).mean(axis=0)
         return test_data_projected, scores
 
-    test_data_projected, scores = predict(bin_edges, probabilities)
-    plt.scatter(test_data_projected[:, 0], test_data_projected[:, 1], c=scores)
-    plt.savefig("ex1.3.pdf")
+    test_data_projected, test_scores = predict(bin_edges, probabilities)
+    
+    fig, ax = plt.subplots(1, 2, figsize=(20, 8))
+    ax[0].scatter(test_data_projected[:, 0], test_data_projected[:, 1], c=test_scores)
+    ax[1].scatter(proj_data[:, 0], proj_data[:, 1], c=scores)
+    from matplotlib import cm
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
+    fig.savefig("ex1.3.pdf")
     plt.clf()
 
     # 1.4
@@ -74,8 +80,11 @@ def ex1():
     for n_bins in [10, 50, 100, 150, 200]:
         bin_edges, scores, probabilities, histograms = train(n_bins)  
         test_data_projected, scores = predict(bin_edges, probabilities)
-        plt.scatter(test_data_projected[:, 0], test_data_projected[:, 1], c=scores)
-        plt.savefig(f"ex1.4_bins_{n_bins}.pdf".format(n_bins))
+        fig, ax = plt.subplots(1, 1, figsize=(20, 8))
+        cb = cm.ScalarMappable(cmap='viridis')
+        fig.colorbar(cb, ax=ax)
+        ax.scatter(test_data_projected[:, 0], test_data_projected[:, 1], c=scores)
+        fig.savefig(f"ex1.4_bins_{n_bins}.pdf".format(n_bins))
         plt.clf()
     
 # ex2
@@ -83,6 +92,7 @@ def ex2():
     # 2.1
     import numpy as np
     train_data, _ = make_blobs(n_samples=500, n_features=2, centers=[[10, 0], [0, 10]])
+    train_data = np.append(train_data, [[-10, -10], [10, 10], [-10, 10], [10, -10]], axis=0)
     from pyod.models.iforest import IForest
     from pyod.models.dif import DIF
     from pyod.models.loda import LODA
@@ -102,6 +112,7 @@ def ex2():
     scores_loda = loda.decision_function(test_data)
     
     import matplotlib.pyplot as plt
+    from matplotlib import cm
     fig, ax = plt.subplots(1, 3, figsize=(20, 8))
     ax[0].scatter(test_data[:, 0], test_data[:, 1], c=scores_iforest)
     ax[0].set_title("IForest")
@@ -109,6 +120,8 @@ def ex2():
     ax[1].set_title("DIF")
     ax[2].scatter(test_data[:, 0], test_data[:, 1], c=scores_loda)
     ax[2].set_title("LODA")
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
     fig.savefig("ex2.1.pdf")
     plt.clf()
     
@@ -129,6 +142,8 @@ def ex2():
     scores_loda = loda.decision_function(test_data)
     ax[2].scatter(test_data[:, 0], test_data[:, 1], c=scores_loda)
     ax[2].set_title("Bins=200")
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
     fig.savefig("ex2.5LODA.pdf")
     plt.clf()
     
@@ -137,22 +152,32 @@ def ex2():
     dif.fit(train_data)
     scores_dif = dif.decision_function(test_data)
     ax[0].scatter(test_data[:, 0], test_data[:, 1], c=scores_dif)
-    ax[0].set_title("Bins=10")
+    ax[0].set_title("Hidden neurons=[16]")
     dif = DIF(contamination=0.02, hidden_neurons=[32, 16])
     dif.fit(train_data)
     scores_dif = dif.decision_function(test_data)
     ax[1].scatter(test_data[:, 0], test_data[:, 1], c=scores_dif)
-    ax[1].set_title("Bins=50")
+    ax[1].set_title("Hidden neurons=[32, 16]")
     dif = DIF(contamination=0.02, hidden_neurons=[64, 32, 16])
     dif.fit(train_data)
     scores_dif= dif.decision_function(test_data)
     ax[2].scatter(test_data[:, 0], test_data[:, 1], c=scores_dif)
-    ax[2].set_title("Bins=200")
+    ax[2].set_title("Hidden neurons=[64, 32, 16]")
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
     fig.savefig("ex2.5DIF.pdf")
     plt.clf()
     
     # 2.6
     train_data, _ = make_blobs(n_samples=500, n_features=3, centers=[[0, 10, 0], [10, 0, 10]])
+    train_data = np.append(train_data, [[10, 10, 10],
+                                        [10, 10, -10],
+                                        [10, -10, 10],
+                                        [10, -10, -10],
+                                        [-10, 10, 10],
+                                        [-10, 10, -10],
+                                        [-10, -10, 10],
+                                        [-10, -10, -10]], axis=0)
     iforest = IForest(contamination=0.02)
     dif = DIF(contamination=0.02)
     loda = LODA(contamination=0.02)
@@ -172,6 +197,9 @@ def ex2():
     ax[1].set_title("DIF")
     ax[2].scatter(*test_data.T, c=scores_loda)
     ax[2].set_title("LODA")
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
+    # plt.show()
     fig.savefig("ex2.6.1.pdf")
     plt.clf()
     
@@ -191,6 +219,8 @@ def ex2():
     scores_loda = loda.decision_function(test_data)
     ax[2].scatter(*test_data.T, c=scores_loda)
     ax[2].set_title("Bins=200")
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
     fig.savefig("ex2.6LODA.pdf")
     plt.clf()
     
@@ -210,10 +240,12 @@ def ex2():
     scores_dif= dif.decision_function(test_data)
     ax[2].scatter(*test_data.T, c=scores_dif)
     ax[2].set_title("Bins=200")
+    cb = cm.ScalarMappable(cmap='viridis')
+    fig.colorbar(cb, ax=ax)
     fig.savefig("ex2.6DIF.pdf")
     plt.clf()
 
-# ex3
+# # ex3
 def ex3():
     from scipy.io import loadmat
     from sklearn.model_selection import train_test_split
@@ -281,6 +313,6 @@ def ex3():
     print("MEAN BA DIF=", mean_ba_dif , "MEAN ROC DIF=", mean_roc_dif)
     print("MEAN BA LODA=", mean_ba_loda, "MEAN ROC LODA=", mean_roc_loda)
 
-# ex1()
-# ex2()
-# ex3()
+ex1()
+ex2()
+ex3()
