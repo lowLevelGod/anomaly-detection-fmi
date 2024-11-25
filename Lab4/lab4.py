@@ -60,14 +60,22 @@ def ex1():
         ax[1][1].scatter(*X_test[test_pred == 1].T, c='red')
         ax[1][1].set_title("Test predicted")
         fig.savefig(file_name)
+        fig.suptitle(model_name)
+        # plt.show()
         plt.clf()
         
-    train_and_plot_ocsvm(OCSVM(kernel='rbf', contamination=0.15), X_train, X_test, y_train, y_test, "ex1.4.pdf", "rbf")
+    for contamination in [0.15, 0.20, 0.30, 0.40, 0.45]:
+        train_and_plot_ocsvm(OCSVM(kernel='linear', contamination=contamination), X_train, X_test, y_train, y_test, "ex1.3c=" + str(contamination) + ".pdf", "linear c=" + str(contamination))
+
+    
+    for contamination in [0.15, 0.20, 0.30, 0.40, 0.45]:
+        train_and_plot_ocsvm(OCSVM(kernel='rbf', contamination=contamination), X_train, X_test, y_train, y_test, "ex1.4c=" + str(contamination) + ".pdf", "rbf c=" + str(contamination))
 
     # ex 1.5
     from pyod.models.deep_svdd import DeepSVDD
-    deepSvdd = DeepSVDD(n_features=3, contamination=0.15)
-    train_and_plot_ocsvm(deepSvdd, X_train, X_test, y_train, y_test, "ex1.5.pdf", "DeepSVDD")
+    for contamination in [0.15, 0.20, 0.30, 0.40, 0.45]:
+        deepSvdd = DeepSVDD(n_features=3, contamination=0.15)
+        train_and_plot_ocsvm(deepSvdd, X_train, X_test, y_train, y_test, "ex1.5c=" + str(contamination) + ".pdf", "DeepSVDD c=" + str(contamination))
 
 def ex2():
     from scipy.io import loadmat
@@ -152,11 +160,11 @@ def ex3():
     
     contamination = (train_labels.sum()) / train_labels.shape[0]
     train_and_score(OCSVM(contamination=contamination), train_data, test_data, train_labels, test_labels)
-    train_and_score(DeepSVDD(contamination=contamination, hidden_neurons=[16]), train_data, test_data, train_labels, test_labels)
-    train_and_score(DeepSVDD(contamination=contamination, hidden_neurons=[32, 16]), train_data, test_data, train_labels, test_labels)
-    train_and_score(DeepSVDD(contamination=contamination, hidden_neurons=[64, 32, 16]), train_data, test_data, train_labels, test_labels)
+    train_and_score(DeepSVDD(n_features=train_data.shape[-1], contamination=contamination, hidden_neurons=[32, 16]), train_data, test_data, train_labels, test_labels)
+    train_and_score(DeepSVDD(n_features=train_data.shape[-1], contamination=contamination, hidden_neurons=[64, 32, 16]), train_data, test_data, train_labels, test_labels)
+    train_and_score(DeepSVDD(n_features=train_data.shape[-1], contamination=contamination, hidden_neurons=[64, 64, 16]), train_data, test_data, train_labels, test_labels)
         
     
-# ex1()
+ex1()
 # ex2()
-ex3()
+# ex3()
