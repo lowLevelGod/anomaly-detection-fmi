@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import balanced_accuracy_score
@@ -35,7 +34,7 @@ def ex1():
     sorted_eigenvectors = eigvectors[sorted_indices]
     cumulative_explained_variance = np.cumsum(sorted_eigenvalues) / np.sum(sorted_eigenvalues)
     plt.figure(figsize=(8, 5))
-    plt.bar(range(1, len(eigvals) + 1), eigvals, alpha=0.7, label="Individual Variances")
+    plt.bar(range(1, len(eigvals) + 1), sorted_eigenvalues / np.sum(sorted_eigenvalues), alpha=0.7, label="Individual Variances")
     plt.step(range(1, len(sorted_eigenvalues) + 1), cumulative_explained_variance, where='mid',
             label="Cumulative Explained Variance", color='orange', linewidth=2)
 
@@ -63,20 +62,17 @@ def ex1():
     anomalies_pc3, threshold_pc3 = identify_anomalies(pca_data, component_index=2, contamination_rate=0.1)
     anomalies_pc2, threshold_pc2 = identify_anomalies(pca_data, component_index=1, contamination_rate=0.1)
 
-    def plot_pca_anomalies(pca_data, anomalies, pc_x, pc_y, title):
-        plt.figure(figsize=(8, 6))
-        plt.scatter(pca_data[:, pc_x], pca_data[:, pc_y], label="Normal Points", alpha=0.7)
-        plt.scatter(pca_data[anomalies, pc_x], pca_data[anomalies, pc_y], color='red', label="Anomalies", alpha=0.7)
-        plt.title(title)
-        plt.xlabel(f"Principal Component {pc_x + 1}")
-        plt.ylabel(f"Principal Component {pc_y + 1}")
-        plt.legend()
-        plt.grid(True)
-        plt.savefig("ex1.3" + title + ".pdf")
+    def plot_pca_anomalies(anomalies, title):
+        fig, ax = plt.subplots(1, 1, figsize=(20, 8), subplot_kw=dict(projection="3d"))
+        ax.scatter(*data.T, label="Normal Points", alpha=0.7)
+        ax.scatter(*data[anomalies].T, color='red', label="Anomalies")
+        fig.suptitle(title)
+        ax.legend()
+        fig.savefig("ex1.3" + title + ".pdf")
         plt.clf()
 
-    plot_pca_anomalies(pca_data, anomalies_pc3, pc_x=0, pc_y=1, title="Anomalies based on PC3")
-    plot_pca_anomalies(pca_data, anomalies_pc2, pc_x=0, pc_y=1, title="Anomalies based on PC2")
+    plot_pca_anomalies(anomalies_pc3, title="Anomalies based on PC3")
+    plot_pca_anomalies(anomalies_pc2, title="Anomalies based on PC2")
     
     # 4
     normalization_factors = np.sqrt(eigvals)
@@ -89,15 +85,12 @@ def ex1():
     anomalies = anomaly_scores > threshold
     
     def plot_anomalies(data, anomalies, title):
-        plt.figure(figsize=(8, 6))
-        plt.scatter(data[:, 0], data[:, 1], label="Normal Points", alpha=0.7)
-        plt.scatter(data[anomalies, 0], data[anomalies, 1], color='red', label="Anomalies", alpha=0.7)
-        plt.title(title)
-        plt.xlabel("Transformed Component 1")
-        plt.ylabel("Transformed Component 2")
-        plt.legend()
-        plt.grid(True)
-        plt.savefig("ex1.4.pdf")
+        fig, ax = plt.subplots(1, 1, figsize=(20, 8), subplot_kw=dict(projection="3d"))
+        ax.scatter(*data.T, label="Normal Points", alpha=0.7)
+        ax.scatter(*data[anomalies].T, color='red', label="Anomalies", alpha=0.7)
+        fig.suptitle(title)
+        ax.legend()
+        fig.savefig("ex1.4.pdf")
         plt.clf()
 
     plot_anomalies(normalized_data, anomalies, title="Anomalies based on Normalized Distance")
@@ -161,7 +154,7 @@ def ex3():
     X = data["X"]
     y = data["y"].ravel()  
 
-    train_data, test_data, train_labels, test_labels = train_test_split(X, y, test_size=0.5, random_state=42)
+    train_data, test_data, train_labels, test_labels = train_test_split(X, y, test_size=0.5)
 
     scaler = MinMaxScaler()
     train_data = scaler.fit_transform(train_data)
